@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Washing Machine FSM Simulator</title>
+  <style>
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .panel {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 520px;
+      width: 100%;
+      border: 1px solid #334155;
+    }
+    h2 {
+      text-align: center;
+      color: #38bdf8;
+      margin-top: 0;
+    }
+    .display {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: #020617;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .led {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #334155;
+    }
+    .led-red.on { background: #ef4444; box-shadow: 0 0 14px #ef4444; }
+    .led-red.blink { animation: rblink 0.6s infinite alternate; }
+    @keyframes rblink {
+      from { background: #334155; }
+      to { background: #ef4444; box-shadow: 0 0 14px #ef4444; }
+    }
+    .led-blue.on { background: #3b82f6; box-shadow: 0 0 14px #3b82f6; }
+    .led-blue.blink { animation: bblink 0.6s infinite alternate; }
+    @keyframes bblink {
+      from { background: #334155; }
+      to { background: #3b82f6; box-shadow: 0 0 14px #3b82f6; }
+    }
+    .timer {
+      font-size: 32px;
+      font-weight: bold;
+      font-family: monospace;
+      color: #38bdf8;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    button {
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-coin { background: #475569; color: white; }
+    .btn-run { background: #10b981; color: white; }
+    .btn-pause { background: #f59e0b; color: white; }
+    .btn-stop { background: #ef4444; color: white; }
+    .status {
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h2>Washing Machine Controller</h2>
+    <div class="display">
+      <div>
+        <div id="rled" class="led led-red on"></div>
+        <center><small>RLED</small></center>
+      </div>
+      <div style="text-align:center;">
+        <div id="timer" class="timer">30:00</div>
+        <small id="state">STANDBY</small>
+      </div>
+      <div>
+        <div id="bled" class="led led-blue"></div>
+        <center><small>BLED</small></center>
+      </div>
+    </div>
+    <div class="status">
+      Deposit: <strong id="bal">0</strong>¢ / 50¢ | Motor: <strong id="mot">OFF</strong>
+    </div>
+    <div class="btn-row">
+      <button class="btn-coin" onclick="addCoin(10)">+10¢</button>
+      <button class="btn-coin" onclick="addCoin(20)">+20¢</button>
+      <button class="btn-coin" onclick="addCoin(50)">+50¢</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-run" onclick="onRun()">RUN</button>
+      <button class="btn-pause" onclick="onPause()">PAUSE</button>
+      <button class="btn-stop" onclick="onStop()">STOP</button>
+    </div>
+  </div>
+
+  <script>
+    let state = 'STANDBY', bal = 0, sec = 1800, stopCnt = 0, stopTimer = null;
+
+    function addCoin(c) {
+      if (state === 'STANDBY' || state === 'READY') {
+        bal += c;
+        if (bal >= 50 && state === 'STANDBY') state = 'READY';
+        update();
+      }
+    }
+
+    function onRun() {
+      if (state === 'READY') {
+        bal = 0;
+        sec = 1800;
+        state = 'RUNNING';
+      } else if (state === 'PAUSED') {
+        state = 'RUNNING';
+      }
+      update();
+    }
+
+    function onPause() {
+      if (state === 'RUNNING') {
+        state = 'PAUSED';
+        update();
+      }
+    }
+
+    function onStop() {
+      stopCnt++;
+      if (stopCnt === 1) {
+        clearTimeout(stopTimer);
+        stopTimer = setTimeout(() => { stopCnt = 0; }, 1500);
+      } else if (stopCnt >= 2) {
+        clearTimeout(stopTimer);
+        stopCnt = 0;
+        state = 'STANDBY';
+        bal = 0;
+        sec = 1800;
+        update();
+      }
+    }
+
+    setInterval(() => {
+      if (state === 'RUNNING' || state === 'PAUSED') {
+        if (sec > 0) sec--;
+        else {
+          state = 'STANDBY';
+          sec = 1800;
+        }
+        update();
+      }
+    }, 1000);
+
+    function update() {
+      document.getElementById('bal').innerText = bal;
+      document.getElementById('state').innerText = state;
+      document.getElementById('mot').innerText = (state === 'RUNNING') ? 'ON' : 'OFF';
+
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      document.getElementById('timer').innerText = `${m}:${s}`;
+
+      const r = document.getElementById('rled');
+      const b = document.getElementById('bled');
+      r.className = 'led led-red';
+      b.className = 'led led-blue';
+
+      if (state === 'STANDBY') {
+        r.classList.add('on');
+      } else if (state === 'READY') {
+        b.classList.add('on');
+      } else if (state === 'RUNNING') {
+        b.classList.add('blink');
+      } else if (state === 'PAUSED') {
+        b.classList.add('on');
+      }
+    }
+  </script>
+</body>
+</html>
